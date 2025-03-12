@@ -13,18 +13,18 @@ router.post('/auth', async (req, res) => {
       return res.status(400).json({ message: 'Required data is missing' });
     }
     
-    // Find referrer by referralCode instead of telegramName
+    // Найти реферера по referralCode
     let referrerUser = null;
     if (referrerCode) {
       referrerUser = await User.findOne({ referralCode: referrerCode });
       console.log('Referrer lookup result:', referrerUser ? 'Found' : 'Not found');
     }
     
-    // Check if user already exists
+    // Проверяем, существует ли уже пользователь с данным кошельком
     let user = await User.findOne({ walletAddress });
     
     if (user) {
-      // Update existing user data
+      // Обновляем данные существующего пользователя
       user.telegramId = telegramId;
       user.telegramName = telegramName;
       await user.save();
@@ -35,7 +35,7 @@ router.post('/auth', async (req, res) => {
       });
     }
     
-    // Register new user
+    // Регистрируем нового пользователя
     user = new User({
       walletAddress,
       telegramId,
@@ -47,7 +47,7 @@ router.post('/auth', async (req, res) => {
     });
     await user.save();
     
-    // Update referrer stats if applicable
+    // Если есть реферер, обновляем его статистику
     if (referrerUser) {
       referrerUser.referralsCount = (referrerUser.referralsCount || 0) + 1;
       referrerUser.referralPoints = (referrerUser.referralPoints || 0) + 100;
