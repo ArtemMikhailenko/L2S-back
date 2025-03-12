@@ -1,7 +1,6 @@
 // routes/auth.js
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 
 router.post('/auth', async (req, res) => {
@@ -14,17 +13,18 @@ router.post('/auth', async (req, res) => {
       return res.status(400).json({ message: 'Required data is missing' });
     }
     
-    // Если передан реферальный код, ищем реферера (например, по telegramName)
+    // Find referrer by referralCode instead of telegramName
     let referrerUser = null;
     if (referrerCode) {
-      referrerUser = await User.findOne({ telegramName: referrerCode });
+      referrerUser = await User.findOne({ referralCode: referrerCode });
+      console.log('Referrer lookup result:', referrerUser ? 'Found' : 'Not found');
     }
     
-    // Проверяем, существует ли уже пользователь с данным кошельком
+    // Check if user already exists
     let user = await User.findOne({ walletAddress });
     
     if (user) {
-      // Обновляем данные пользователя
+      // Update existing user data
       user.telegramId = telegramId;
       user.telegramName = telegramName;
       await user.save();
@@ -35,7 +35,7 @@ router.post('/auth', async (req, res) => {
       });
     }
     
-    // Если пользователя нет – регистрация нового
+    // Register new user
     user = new User({
       walletAddress,
       telegramId,
@@ -47,11 +47,15 @@ router.post('/auth', async (req, res) => {
     });
     await user.save();
     
-    // Если новый пользователь пришел по реферальной ссылке, обновляем данные реферера
+    // Update referrer stats if applicable
     if (referrerUser) {
       referrerUser.referralsCount = (referrerUser.referralsCount || 0) + 1;
       referrerUser.referralPoints = (referrerUser.referralPoints || 0) + 100;
       await referrerUser.save();
+      console.log('Updated referrer stats:', { 
+        referralsCount: referrerUser.referralsCount, 
+        referralPoints: referrerUser.referralPoints 
+      });
     }
     
     return res.json({
