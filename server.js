@@ -1,4 +1,5 @@
 require('dotenv').config();
+const cron = require('node-cron');
 const express = require('express');
 const cors = require('cors'); // Импортируем пакет cors
 const mongoose = require('mongoose');
@@ -10,6 +11,15 @@ const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL;
+
+cron.schedule('0 0 * * 0', async () => {
+    try {
+      await User.updateMany({}, { $set: { weeklyPoints: 0 } });
+      console.log('Weekly points reset done.');
+    } catch (error) {
+      console.error('Error resetting weekly points:', error);
+    }
+  });
 
 if (!BOT_TOKEN) {
   throw new Error('BOT_TOKEN не задан в переменных окружения');

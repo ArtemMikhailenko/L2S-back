@@ -42,5 +42,29 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
-
+router.post('/add-points', async (req, res) => {
+    try {
+      const { telegramId, points } = req.body;
+      if (!telegramId || typeof points !== 'number') {
+        return res.status(400).json({ message: 'telegramId and points are required' });
+      }
+      const user = await User.findOne({ telegramId });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      user.totalPoints = (user.totalPoints || 0) + points;
+      user.weeklyPoints = (user.weeklyPoints || 0) + points;
+      await user.save();
+      
+      return res.json({
+        message: `Added ${points} points to user ${telegramId}`,
+        totalPoints: user.totalPoints,
+        weeklyPoints: user.weeklyPoints,
+      });
+    } catch (error) {
+      console.error('Error adding points:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
 module.exports = router;

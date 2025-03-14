@@ -5,6 +5,7 @@ const quizRoutes = require('./quiz');
 const adminRoutes = require('./admin');  // <-- импорт admin.js
 const authRoutes = require('./auth');
 const userRoutes = require('./user');
+const jettonRoutes = require('./jetton');
 
 const router = express.Router();
 
@@ -23,5 +24,6 @@ router.use('/quiz', quizRoutes);
 router.use('/admin', adminRoutes);
 router.use('/', authRoutes);
 router.use('/user', userRoutes);
+router.use('/jetton', jettonRoutes);
 
 module.exports = router;

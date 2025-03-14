@@ -1,6 +1,7 @@
 const express = require('express');
 const QuizQuestion = require('../models/QuizQuestion');
 const router = express.Router();
+const { sendTokensToWallet } = require('../utils/tonTransactions');
 
 router.post('/questions', async (req, res) => {
     try {
@@ -92,6 +93,21 @@ router.post('/questions', async (req, res) => {
     } catch (error) {
       console.error('Error updating question:', error);
       return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
+  router.post('/sendTokens', async (req, res) => {
+    try {
+      const { walletAddress, amount } = req.body;
+      if (!walletAddress || !amount) {
+        return res.status(400).json({ message: 'walletAddress and amount are required' });
+      }
+      // Функция sendTokensToWallet должна отправлять транзакцию в TON-сеть,
+      // используя ваш кошелек-отправитель и приватный ключ (будьте осторожны с безопасностью!)
+      const txResult = await sendTokensToWallet(walletAddress, amount);
+      res.json({ message: 'Tokens sent successfully', txResult });
+    } catch (error) {
+      console.error('Error sending tokens:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
     }
   });
   

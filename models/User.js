@@ -12,14 +12,16 @@ const userSchema = new mongoose.Schema({
   referralCode: { type: String, unique: true },
   level: { type: Number, default: 1 },
   createdAt: { type: Date, default: Date.now },
+  
+  // Новые поля
+  totalPoints: { type: Number, default: 0 },   // Сумма за всё время
+  weeklyPoints: { type: Number, default: 0 }, // Сбрасываются в конце недели
 });
 
 // Генерация referralCode перед сохранением нового пользователя
 userSchema.pre('save', function (next) {
   if (!this.referralCode) {
-    // Генерируем 4 байта (8 символов hex), затем приводим к верхнему регистру
     const randomPart = crypto.randomBytes(4).toString('hex').toUpperCase();
-    // Пример результата: "A3B9F1C2"
     this.referralCode = randomPart;
   }
   next();
