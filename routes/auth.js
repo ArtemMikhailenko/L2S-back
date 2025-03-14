@@ -9,18 +9,19 @@ router.post('/auth', async (req, res) => {
     
     console.log('Auth request received:', { walletAddress, telegramId, telegramName, referrerCode });
     
+    // Проверяем, что все необходимые данные переданы
     if (!walletAddress || !telegramId || !telegramName) {
       return res.status(400).json({ message: 'Required data is missing' });
     }
     
-    // Найти реферера по referralCode
+    // Ищем прямого реферера по referralCode, если он указан
     let referrerUser = null;
     if (referrerCode) {
       referrerUser = await User.findOne({ referralCode: referrerCode });
       console.log('Referrer lookup result:', referrerUser ? 'Found' : 'Not found');
     }
     
-    // Проверяем, существует ли уже пользователь с данным кошельком
+    // Проверяем, существует ли пользователь с данным walletAddress
     let user = await User.findOne({ walletAddress });
     
     if (user) {
@@ -47,12 +48,27 @@ router.post('/auth', async (req, res) => {
     });
     await user.save();
     
-    // Если есть реферер, обновляем его статистику
+    // Если найден прямой реферер, обновляем его статистику
     if (referrerUser) {
       referrerUser.referralsCount = (referrerUser.referralsCount || 0) + 1;
-      referrerUser.referralPoints = (referrerUser.referralPoints || 0) + 100;
+      referrerUser.referralPoints = (referrerUser.referralPoints || 0) + 100; // +100 очков за прямого реферала
       await referrerUser.save();
-      console.log('Updated referrer stats:', { 
+      
+      // Если у прямого реферера есть свой реферер (косвенный), начисляем ему очки
+      if (referrerUser.referrer) {
+        const indirectReferrer = await User.findById(referrerUser.referrer);
+        if (indirectReferrer) {
+          indirectReferrer.referralPoints = (indirectReferrer.referralPoints || 0) + 50; // +50 очков за косвенного
+          await indirectReferrer.save();
+          console.log('Updated indirect referrer stats:', { 
+            telegramName: indirectReferrer.telegramName, 
+            referralPoints: indirectReferrer.referralPoints 
+          });
+        }
+      }
+      
+      console.log('Updated direct referrer stats:', { 
+        telegramName: referrerUser.telegramName, 
         referralsCount: referrerUser.referralsCount, 
         referralPoints: referrerUser.referralPoints 
       });
