@@ -6,7 +6,7 @@ const adminRoutes = require('./admin');  // <-- импорт admin.js
 const authRoutes = require('./auth');
 const userRoutes = require('./user');
 const jettonRoutes = require('./jetton');
-const subscriptionRouter = require('./subscription');
+const paymentRoutes = require('./payment');
 
 
 const router = express.Router();
@@ -27,6 +27,6 @@ router.use('/admin', adminRoutes);
 router.use('/', authRoutes);
 router.use('/user', userRoutes);
 router.use('/jetton', jettonRoutes);
-router.use('/subscription', subscriptionRouter);
+router.use('/payment', paymentRoutes);
 
 module.exports = router;
