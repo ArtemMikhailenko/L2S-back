@@ -8,7 +8,6 @@ const TelegramBot = require('node-telegram-bot-api');
 const apiRoutes = require('./routes/api');
 const User = require('./models/User');
 
-// Переменные окружения
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI;
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -36,7 +35,6 @@ if (!BOT_TOKEN) {
   throw new Error('BOT_TOKEN не задан в переменных окружения');
 }
 
-// Подключение к MongoDB
 mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -44,10 +42,8 @@ mongoose.connect(MONGODB_URI, {
   .then(() => console.log('Подключение к MongoDB успешно'))
   .catch((err) => console.error('Ошибка подключения к MongoDB:', err));
 
-// Создаем Telegram бота с polling (для разработки, в продакшене лучше использовать webhook)
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-// Обработка команды /start
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, 'Добро пожаловать! Нажмите кнопку ниже, чтобы открыть веб-приложение:', {
@@ -59,14 +55,12 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-// Обработка данных из веб-приложения
 bot.on('web_app_data', async (msg) => {
   const chatId = msg.chat.id;
   try {
     const data = JSON.parse(msg.web_app_data.data);
     console.log('Получены данные:', data);
 
-    // Импортируем модель внутри обработчика, чтобы избежать циклических зависимостей
     const WebAppData = require('./models/WebAppData');
     const webAppData = new WebAppData({ chatId, data });
     await webAppData.save();
@@ -78,24 +72,18 @@ bot.on('web_app_data', async (msg) => {
   }
 });
 
-// Обработка ошибок polling
 bot.on('polling_error', (error) => {
   console.error('Polling error:', error);
 });
 
-// Создаем Express сервер
 const app = express();
 
-// Включаем CORS для всех запросов
 app.use(cors());
 
-// Middleware для парсинга JSON в теле запросов
 app.use(express.json());
 
-// Роуты API
 app.use('/api', apiRoutes);
 
-// Запуск сервера
 app.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
 });

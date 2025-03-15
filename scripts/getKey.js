@@ -1,6 +1,5 @@
 // scripts/getKey.js
 const TonMnemonic = require('tonweb-mnemonic');
-// Если функция не находится по свойству mnemonicToWalletKey, пробуем взять default
 const mnemonicToWalletKey = typeof TonMnemonic.mnemonicToWalletKey === 'function'
   ? TonMnemonic.mnemonicToWalletKey
   : TonMnemonic.default;

@@ -3,7 +3,6 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// 1) GET /api/user - Получение списка всех пользователей
 router.get('/', async (req, res) => {
   try {
     const users = await User.find().select('-passwordHash');
@@ -14,7 +13,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 2) GET /api/user/telegram/:telegramId - Получение пользователя по Telegram ID
 router.get('/telegram/:telegramId', async (req, res) => {
   try {
     const telegramId = req.params.telegramId;
@@ -29,7 +27,6 @@ router.get('/telegram/:telegramId', async (req, res) => {
   }
 });
 
-// 3) GET /api/user/:id - Получение данных пользователя по его MongoDB ID
 router.get('/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-passwordHash');

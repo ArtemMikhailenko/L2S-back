@@ -1,6 +1,7 @@
-// models/User.js
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+
+const freeTrialDuration = Number(process.env.FREE_TRIAL_DURATION) || 300000; // default 5 minutes
 
 const userSchema = new mongoose.Schema({
   walletAddress: { type: String, required: true, unique: true },
@@ -13,12 +14,11 @@ const userSchema = new mongoose.Schema({
   level: { type: Number, default: 1 },
   createdAt: { type: Date, default: Date.now },
   
-  // Новые поля
-  totalPoints: { type: Number, default: 0 },   // Сумма за всё время
-  weeklyPoints: { type: Number, default: 0 }, // Сбрасываются в конце недели
+  totalPoints: { type: Number, default: 0 },
+  weeklyPoints: { type: Number, default: 0 },
+  accessUntil: { type: Date, default: () => new Date(Date.now() + freeTrialDuration) },
 });
 
-// Генерация referralCode перед сохранением нового пользователя
 userSchema.pre('save', function (next) {
   if (!this.referralCode) {
     const randomPart = crypto.randomBytes(4).toString('hex').toUpperCase();

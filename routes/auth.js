@@ -9,23 +9,19 @@ router.post('/auth', async (req, res) => {
     
     console.log('Auth request received:', { walletAddress, telegramId, telegramName, referrerCode });
     
-    // Проверяем, что все необходимые данные переданы
     if (!walletAddress || !telegramId || !telegramName) {
       return res.status(400).json({ message: 'Required data is missing' });
     }
     
-    // Ищем прямого реферера по referralCode, если он указан
     let referrerUser = null;
     if (referrerCode) {
       referrerUser = await User.findOne({ referralCode: referrerCode });
       console.log('Referrer lookup result:', referrerUser ? 'Found' : 'Not found');
     }
     
-    // Проверяем, существует ли пользователь с данным walletAddress
-    let user = await User.findOne({ walletAddress });
+    let user = await User.findOne({ telegramId });
     
     if (user) {
-      // Обновляем данные существующего пользователя
       user.telegramId = telegramId;
       user.telegramName = telegramName;
       await user.save();
@@ -36,7 +32,6 @@ router.post('/auth', async (req, res) => {
       });
     }
     
-    // Регистрируем нового пользователя
     user = new User({
       walletAddress,
       telegramId,
@@ -48,13 +43,11 @@ router.post('/auth', async (req, res) => {
     });
     await user.save();
     
-    // Если найден прямой реферер, обновляем его статистику
     if (referrerUser) {
       referrerUser.referralsCount = (referrerUser.referralsCount || 0) + 1;
       referrerUser.referralPoints = (referrerUser.referralPoints || 0) + 100; // +100 очков за прямого реферала
       await referrerUser.save();
       
-      // Если у прямого реферера есть свой реферер (косвенный), начисляем ему очки
       if (referrerUser.referrer) {
         const indirectReferrer = await User.findById(referrerUser.referrer);
         if (indirectReferrer) {

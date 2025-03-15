@@ -3,7 +3,6 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const QuizQuestion = require('../models/QuizQuestion');
 
-// Массив с 20 вопросами (пример)
 const questions = [
   {
     question: "What is React?",
