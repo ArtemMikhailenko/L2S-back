@@ -1,9 +1,30 @@
+// routes/quiz.js
 const express = require('express');
 const QuizQuestion = require('../models/QuizQuestion');
 const router = express.Router();
-const { sendTokensToWallet } = require('../utils/tonTransactions');
+
+/* Helper function defined above */
+function transformQuestion(doc, lang = 'en') {
+  return {
+    _id: doc._id,
+    question: doc.question[lang],
+    correctAnswer: doc.correctAnswer[lang],
+    wrongAnswers: doc.wrongAnswers.map(ans => ans[lang]),
+    createdAt: doc.createdAt,
+  };
+}
 
 // Create a new question
+// The request body must contain objects for each language, e.g.:
+// {
+//   "question": { "en": "What is 2+2?", "ar": "ما هو ٢+٢؟" },
+//   "correctAnswer": { "en": "4", "ar": "٤" },
+//   "wrongAnswers": [
+//      { "en": "3", "ar": "٣" },
+//      { "en": "5", "ar": "٥" },
+//      { "en": "6", "ar": "٦" }
+//   ]
+// }
 router.post('/questions', async (req, res) => {
   try {
     const { question, correctAnswer, wrongAnswers } = req.body;
@@ -12,9 +33,8 @@ router.post('/questions', async (req, res) => {
       return res.status(400).json({ message: 'question, correctAnswer, and wrongAnswers are required' });
     }
     
-    // Check that wrongAnswers is an array of three strings
     if (!Array.isArray(wrongAnswers) || wrongAnswers.length !== 3) {
-      return res.status(400).json({ message: 'wrongAnswers must be an array of 3 strings' });
+      return res.status(400).json({ message: 'wrongAnswers must be an array of 3 objects with language keys' });
     }
     
     const newQuestion = new QuizQuestion({
@@ -38,45 +58,43 @@ router.post('/questions', async (req, res) => {
 // Get questions with filtering and pagination
 router.get('/questions', async (req, res) => {
   try {
-    // Extract query parameters
     const { 
       page = 1, 
       limit = 10, 
       search = '', 
       sort = 'createdAt', 
-      order = 'desc' 
+      order = 'desc',
+      lang = 'en'
     } = req.query;
     
-    // Convert page and limit to numbers
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     
-    // Validate page and limit
     if (isNaN(pageNum) || isNaN(limitNum) || pageNum < 1 || limitNum < 1) {
       return res.status(400).json({ message: 'Invalid page or limit parameters' });
     }
     
-    // Build query
+    // Build query: search in both languages
     const query = {};
     if (search) {
       query.$or = [
-        { question: { $regex: search, $options: 'i' } },
-        { correctAnswer: { $regex: search, $options: 'i' } }
+        { "question.en": { $regex: search, $options: 'i' } },
+        { "question.ar": { $regex: search, $options: 'i' } },
+        { "correctAnswer.en": { $regex: search, $options: 'i' } },
+        { "correctAnswer.ar": { $regex: search, $options: 'i' } }
       ];
     }
     
-    // Count total documents
     const totalQuestions = await QuizQuestion.countDocuments(query);
-    
-    // Build sort object
     const sortObj = {};
     sortObj[sort] = order === 'asc' ? 1 : -1;
     
-    // Execute query with pagination
-    const questions = await QuizQuestion.find(query)
+    const docs = await QuizQuestion.find(query)
       .sort(sortObj)
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum);
+    
+    const questions = docs.map(doc => transformQuestion(doc, lang));
     
     return res.json({
       questions,
@@ -95,18 +113,19 @@ router.get('/questions', async (req, res) => {
 // Get a random set of questions
 router.get('/questions/random', async (req, res) => {
   try {
-    const { limit = 15 } = req.query;
+    const { limit = 15, lang = 'en' } = req.query;
     const limitNum = parseInt(limit);
     
     if (isNaN(limitNum) || limitNum < 1) {
       return res.status(400).json({ message: 'Invalid limit parameter' });
     }
     
-    // Get random questions
-    const questions = await QuizQuestion.aggregate([
+    const docs = await QuizQuestion.aggregate([
       { $sample: { size: limitNum } }
     ]);
     
+    // Aggregate returns plain objects, so manually transform:
+    const questions = docs.map(doc => transformQuestion(doc, lang));
     return res.json(questions);
   } catch (error) {
     console.error('Error retrieving random questions:', error);
@@ -117,10 +136,12 @@ router.get('/questions/random', async (req, res) => {
 // Get question by ID
 router.get('/questions/:id', async (req, res) => {
   try {
-    const question = await QuizQuestion.findById(req.params.id);
-    if (!question) {
+    const { lang = 'en' } = req.query;
+    const doc = await QuizQuestion.findById(req.params.id);
+    if (!doc) {
       return res.status(404).json({ message: 'Question not found' });
     }
+    const question = transformQuestion(doc, lang);
     return res.json(question);
   } catch (error) {
     console.error('Error retrieving question by ID:', error);
@@ -128,33 +149,26 @@ router.get('/questions/:id', async (req, res) => {
   }
 });
 
-// Update question
+// Update question by ID
 router.put('/questions/:id', async (req, res) => {
   try {
     const { question, correctAnswer, wrongAnswers } = req.body;
-    
-    // Find question by ID
-    const existingQuestion = await QuizQuestion.findById(req.params.id);
-    if (!existingQuestion) {
+    const doc = await QuizQuestion.findById(req.params.id);
+    if (!doc) {
       return res.status(404).json({ message: 'Question not found' });
     }
-    
-    // Update fields if provided
-    if (question !== undefined) existingQuestion.question = question;
-    if (correctAnswer !== undefined) existingQuestion.correctAnswer = correctAnswer;
+    if (question !== undefined) doc.question = question;
+    if (correctAnswer !== undefined) doc.correctAnswer = correctAnswer;
     if (wrongAnswers !== undefined) {
-      // Check format
       if (!Array.isArray(wrongAnswers) || wrongAnswers.length !== 3) {
-        return res.status(400).json({ message: 'wrongAnswers must be an array of 3 strings' });
+        return res.status(400).json({ message: 'wrongAnswers must be an array of 3 objects with language keys' });
       }
-      existingQuestion.wrongAnswers = wrongAnswers;
+      doc.wrongAnswers = wrongAnswers;
     }
-    
-    await existingQuestion.save();
-    
+    await doc.save();
     return res.json({
       message: 'Question updated successfully',
-      question: existingQuestion
+      question: doc
     });
   } catch (error) {
     console.error('Error updating question:', error);
@@ -162,11 +176,11 @@ router.put('/questions/:id', async (req, res) => {
   }
 });
 
-// Delete question
+// Delete question by ID
 router.delete('/questions/:id', async (req, res) => {
   try {
-    const result = await QuizQuestion.findByIdAndDelete(req.params.id);
-    if (!result) {
+    const doc = await QuizQuestion.findByIdAndDelete(req.params.id);
+    if (!doc) {
       return res.status(404).json({ message: 'Question not found' });
     }
     return res.json({ message: 'Question deleted successfully' });
@@ -176,7 +190,8 @@ router.delete('/questions/:id', async (req, res) => {
   }
 });
 
-// Send tokens at the end of quiz
+// Send tokens at the end of quiz (this endpoint remains as-is)
+const { sendTokensToWallet } = require('../utils/tonTransactions');
 router.post('/complete', async (req, res) => {
   try {
     const { address, telegramId, correctAnswers, totalQuestions } = req.body;
@@ -187,11 +202,9 @@ router.post('/complete', async (req, res) => {
       });
     }
     
-    // Calculate rewards: 5 for correct answers, 1 for incorrect
     const incorrectAnswers = totalQuestions - correctAnswers;
     const tokenAmount = (correctAnswers * 5) + (incorrectAnswers * 1);
     
-    // Send tokens using the wallet address if provided, otherwise use telegramId
     const result = await sendTokensToWallet(address || telegramId, tokenAmount);
     
     if (!result.success) {

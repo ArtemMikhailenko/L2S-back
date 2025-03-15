@@ -2,13 +2,18 @@
 const mongoose = require('mongoose');
 
 const quizQuestionSchema = new mongoose.Schema({
-  question: { type: String, required: true },
-  correctAnswer: { type: String, required: true },
-  wrongAnswers: {
-    type: [String],
-    validate: [arr => arr.length === 3, 'Must have exactly 3 wrong answers'],
-    required: true
+  question: {
+    en: { type: String, required: true },
+    ar: { type: String, required: true },
   },
+  correctAnswer: {
+    en: { type: String, required: true },
+    ar: { type: String, required: true },
+  },
+  wrongAnswers: [{
+    en: { type: String, required: true },
+    ar: { type: String, required: true },
+  }],
   createdAt: { type: Date, default: Date.now }
 });
 
