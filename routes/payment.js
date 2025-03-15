@@ -5,12 +5,12 @@ const User = require('../models/User');
 
 router.post('/extend-access', async (req, res) => {
   try {
-    const { walletAddress } = req.body;
-    if (!walletAddress) {
+    const { telegramId } = req.body;
+    if (!telegramId) {
       return res.status(400).json({ message: 'Wallet address is required' });
     }
 
-    const user = await User.findOne({ walletAddress });
+    const user = await User.findOne({ telegramId });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
