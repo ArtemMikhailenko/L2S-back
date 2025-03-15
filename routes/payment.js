@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const Config = require('../models/Config');
 
 router.post('/extend-access', async (req, res) => {
   try {
