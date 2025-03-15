@@ -8,6 +8,7 @@ const userRoutes = require('./user');
 const jettonRoutes = require('./jetton');
 const paymentRoutes = require('./payment');
 const configRoutes = require('./config'); // new config routes
+const rewardSettingsRoutes = require('./rewardSettings');
 
 
 const router = express.Router();
@@ -30,5 +31,6 @@ router.use('/user', userRoutes);
 router.use('/jetton', jettonRoutes);
 router.use('/payment', paymentRoutes);
 router.use('/config', configRoutes);
+router.use('/reward-settings', rewardSettingsRoutes);
 
 module.exports = router;

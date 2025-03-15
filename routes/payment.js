@@ -8,7 +8,7 @@ router.post('/extend-access', async (req, res) => {
   try {
     const { telegramId } = req.body;
     if (!telegramId) {
-      return res.status(400).json({ message: 'Wallet address is required' });
+      return res.status(400).json({ message: 'telegramId is required' });
     }
 
     const user = await User.findOne({ telegramId });
@@ -16,8 +16,15 @@ router.post('/extend-access', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Продление на 30 дней (30*24*60*60*1000 миллисекунд)
-    const extensionDuration = 30 * 24 * 60 * 60 * 1000;
+    // Получаем настройки из базы
+    let config = await Config.findOne();
+    if (!config) {
+      // Если настроек нет, создаём новый документ с дефолтными значениями
+      config = await Config.create({});
+    }
+
+    // Используем значение extensionDuration из настроек
+    const extensionDuration = config.extensionDuration;
     const now = new Date();
     // Если время доступа уже истекло, базируемся на текущем времени
     const baseTime = user.accessUntil && user.accessUntil > now ? user.accessUntil : now;

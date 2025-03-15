@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
-
-const freeTrialDuration = Number(process.env.FREE_TRIAL_DURATION) || 300000; // default 5 minutes
+const Config = require('./Config'); // убедитесь, что путь корректный
 
 const userSchema = new mongoose.Schema({
   walletAddress: { type: String, required: true, unique: true },
@@ -16,13 +15,25 @@ const userSchema = new mongoose.Schema({
   
   totalPoints: { type: Number, default: 0 },
   weeklyPoints: { type: Number, default: 0 },
-  accessUntil: { type: Date, default: () => new Date(Date.now() + freeTrialDuration) },
+  accessUntil: { type: Date } // будем устанавливать в pre('save')
 });
 
-userSchema.pre('save', function (next) {
+// Асинхронный pre-save хук
+userSchema.pre('save', async function (next) {
+  // Генерация referralCode, если отсутствует
   if (!this.referralCode) {
     const randomPart = crypto.randomBytes(4).toString('hex').toUpperCase();
     this.referralCode = randomPart;
+  }
+  if (this.isNew && !this.accessUntil) {
+    try {
+      const config = await Config.findOne();
+      const freeTrialDuration =
+        config && config.freeTrialDuration ? config.freeTrialDuration : 300000;
+      this.accessUntil = new Date(Date.now() + freeTrialDuration);
+    } catch (err) {
+      return next(err);
+    }
   }
   next();
 });

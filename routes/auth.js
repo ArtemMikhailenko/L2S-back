@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const RewardSettings = require('../models/RewardSettings');
 
 router.post('/auth', async (req, res) => {
   try {
@@ -19,6 +20,9 @@ router.post('/auth', async (req, res) => {
       console.log('Referrer lookup result:', referrerUser ? 'Found' : 'Not found');
     }
     
+    // Retrieve reward settings from DB
+    const rewardSettings = await RewardSettings.findOne();
+
     let user = await User.findOne({ telegramId });
     
     if (user) {
@@ -44,14 +48,16 @@ router.post('/auth', async (req, res) => {
     await user.save();
     
     if (referrerUser) {
+      // Update direct referrer stats using primaryReferralPoints from reward settings (fallback to 100 if not available)
       referrerUser.referralsCount = (referrerUser.referralsCount || 0) + 1;
-      referrerUser.referralPoints = (referrerUser.referralPoints || 0) + 100; // +100 очков за прямого реферала
+      referrerUser.referralPoints = (referrerUser.referralPoints || 0) + (rewardSettings?.primaryReferralPoints || 100);
       await referrerUser.save();
       
+      // Update indirect referrer if exists using secondaryReferralPoints (fallback to 50)
       if (referrerUser.referrer) {
         const indirectReferrer = await User.findById(referrerUser.referrer);
         if (indirectReferrer) {
-          indirectReferrer.referralPoints = (indirectReferrer.referralPoints || 0) + 50; // +50 очков за косвенного
+          indirectReferrer.referralPoints = (indirectReferrer.referralPoints || 0) + (rewardSettings?.secondaryReferralPoints || 50);
           await indirectReferrer.save();
           console.log('Updated indirect referrer stats:', { 
             telegramName: indirectReferrer.telegramName, 

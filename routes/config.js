@@ -3,43 +3,53 @@ const express = require('express');
 const router = express.Router();
 const Config = require('../models/Config');
 
-// Endpoint to update extension duration (in milliseconds)
-// (Only an admin should be allowed to call this in production)
-router.post('/extension-duration', async (req, res) => {
+// GET /api/config/settings
+// Retrieve the current configuration settings
+router.get('/settings', async (req, res) => {
   try {
-    const { extensionDuration } = req.body;
-    if (!extensionDuration) {
-      return res.status(400).json({ message: 'extensionDuration is required' });
+    let config = await Config.findOne();
+    // If no config exists, create one with default values
+    if (!config) {
+      config = await Config.create({});
     }
-    const duration = Number(extensionDuration);
-    if (isNaN(duration) || duration <= 0) {
-      return res.status(400).json({ message: 'Invalid extensionDuration value' });
-    }
-
-    // Upsert config with key 'extensionDuration'
-    const config = await Config.findOneAndUpdate(
-      { key: 'extensionDuration' },
-      { value: duration },
-      { new: true, upsert: true }
-    );
-
-    return res.json({ message: 'Extension duration updated', config });
+    return res.json(config);
   } catch (error) {
-    console.error('Error updating extension duration:', error);
+    console.error('Error fetching config settings:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-// Endpoint to get current extension duration
-router.get('/extension-duration', async (req, res) => {
+// PUT /api/config/settings
+// Update the configuration settings (admin-only in production)
+router.put('/settings', async (req, res) => {
   try {
-    const config = await Config.findOne({ key: 'extensionDuration' });
-    if (!config) {
-      return res.status(404).json({ message: 'Extension duration not set' });
+    const { extensionDuration, paymentReceiver, paymentAmount, freeTrialDuration } = req.body;
+    
+    // Optional: validate input values
+    if (extensionDuration !== undefined && (isNaN(extensionDuration) || extensionDuration <= 0)) {
+      return res.status(400).json({ message: 'Invalid extensionDuration value' });
     }
-    return res.json({ extensionDuration: config.value });
+    if (paymentAmount !== undefined && (isNaN(paymentAmount) || paymentAmount <= 0)) {
+      return res.status(400).json({ message: 'Invalid paymentAmount value' });
+    }
+    if (freeTrialDuration !== undefined && (isNaN(freeTrialDuration) || freeTrialDuration <= 0)) {
+      return res.status(400).json({ message: 'Invalid freeTrialDuration value' });
+    }
+
+    let config = await Config.findOne();
+    if (!config) {
+      config = new Config();
+    }
+    
+    if (extensionDuration !== undefined) config.extensionDuration = extensionDuration;
+    if (paymentReceiver !== undefined) config.paymentReceiver = paymentReceiver;
+    if (paymentAmount !== undefined) config.paymentAmount = paymentAmount;
+    if (freeTrialDuration !== undefined) config.freeTrialDuration = freeTrialDuration;
+    
+    await config.save();
+    return res.json({ message: 'Config updated successfully', config });
   } catch (error) {
-    console.error('Error fetching extension duration:', error);
+    console.error('Error updating config settings:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
